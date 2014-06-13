@@ -1,0 +1,9 @@
+{
+    "name": "jss",
+    "version": "0.1.0",
+    "private": true,
+    "main": "index.js",
+    "dependencies": {
+	"glob": "3.2.6"
+    }
+}
