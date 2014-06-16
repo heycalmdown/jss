@@ -5,7 +5,6 @@ exports.createJssByJsonFile = createJssByJsonFile;
 exports.createJssByJsonStr = createJssByJsonStr;
 
 function createJssByJsonStr(jstr, size) {
-	console.info('[jss] jstr.length=', jstr.length);
 	try {
 		var obj = jss.createJssObject(jstr);
 		return obj;
@@ -22,8 +21,8 @@ function createJssByJsonFile(file) {
 	var obj = createJssByJsonStr(jstr);
 
 	if (!obj) {
+		console.error('[fo3-jss] '+file);
 		obj = require(file);
 	}
-
 	return obj;
 }

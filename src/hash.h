@@ -41,7 +41,7 @@ typedef struct hash_t {
 	hash_userset_t us;
 } hash_t;
 
-typedef void (*hash_enum_callback_t)(const hash_t *tptr, int idx, char *key, void *data, void *userdata);
+typedef void (*hash_enum_callback_t)(const hash_t *tptr, int idx, char *key, void *data, void *userdata1, void* userdata2);
 
 #define HASH_FAIL (void*)-1
 
@@ -60,7 +60,7 @@ extern "C" {
 
 	void* hash_lookup (const hash_t *, const char *);
 
-	void hash_enumerator(const hash_t *, hash_enum_callback_t, void *userdata);
+	void hash_enumerator(const hash_t *, hash_enum_callback_t, void *userdata1, void *userdata2 = NULL);
 
 	void* hash_insert (hash_t *, const char *, void *);
 

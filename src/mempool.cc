@@ -53,11 +53,13 @@ mp_t* mempool_create(void *source, int size, int cnt)
 		if (!source) mp->free = true;
 
 		errscope(
+			/*
 			int c=mp->total-mp->used;
 			mp_hdr_t *it=mp->head;
 			for(int j=0; j<c; it=it->next, j++) {
 				errprint("[%d] mphdr=0x%x, mphdr.prev=0x%x, mphdr.next=0x%x", j, it, it->prev, it->next);
 			}
+			*/
 		);
 
 		return mp;
@@ -109,12 +111,14 @@ void* mempool_calloc(mp_t *mp, int cnt)
 	mp->used += cnt;
 
 	errscope(
+		/*
 		errprint("start=0x%x, count=%d", start, cnt);
 		int cc=mp->total-mp->used;
 		mp_hdr_t *it=mp->head;
 		for(int j=0; j<cc; it=it->next, j++) {
 			errprint("[%d] mphdr=0x%x, mphdr.prev=0x%x, mphdr.next=0x%x", j, it, it->prev, it->next);
 		}
+		*/
 	);
 
 	return start->data;

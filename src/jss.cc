@@ -114,6 +114,7 @@ private:
 	~Jss();
 	
 	static Handle<Value> New(const Arguments& args);
+	static Handle<Value> forEach(const Arguments& args);
 	static Handle<Value> GetNamedProperty(Local<String> name, const AccessorInfo &info);
 	static Handle<Array> EnumerateNamedProperty(const AccessorInfo &info);
 	static Handle<Value> GetIndexedProperty(uint32_t index, const AccessorInfo &info);
@@ -379,6 +380,8 @@ void Jss::Init(Handle<Object> target)
 	tpl->InstanceTemplate()->SetInternalFieldCount(1);
 	
 	// Prototype
+	//tpl->PrototypeTemplate()->Set(String::NewSymbol("forEach"), FunctionTemplate::New(forEach)->GetFunction());
+	//tpl->PrototypeTemplate()->Set(String::NewSymbol("map"), FunctionTemplate::New(forEach)->GetFunction());
 	tpl->InstanceTemplate()->SetNamedPropertyHandler(GetNamedProperty, 0, 0, 0,EnumerateNamedProperty);
 	tpl->InstanceTemplate()->SetIndexedPropertyHandler(GetIndexedProperty, 0, 0, 0, EnumerateIndexedProperty);
 	constructor_template_ = Persistent<Function>::New(tpl->GetFunction());
@@ -401,12 +404,66 @@ Handle<Value> Jss::NewInstance(int argc, Handle<Value> argv[])
 	return scope.Close(instance);
 }
 
-void hash_enum_callback(const hash_t *tptr, int idx, char *key, void *data, void *userdata) {
-	Local<Array> *result = static_cast<Local<Array>*>(userdata);
+void hash_enum_callback(const hash_t *tptr, int idx, char *key, void *data, void *userdata1, void *userdata2) {
+	Local<Array> *result = static_cast<Local<Array>*>(userdata1);
 	if (!strncmp(key, "IDX_", 4)) {
 		key += 4;
 	}
 	(*result)->Set(Integer::New(idx), String::New(key));
+}
+
+void hash_enum_callback2(const hash_t *tptr, int idx, char *key, void *data, void *userdata1, void *userdata2) {
+	Local<Array> *result = static_cast<Local<Array>*>(userdata1);
+	Jss *jss = (Jss *) userdata2;
+	Handle<Value> subobj;
+
+	if (!strncmp(key, "IDX_", 4)) {
+		key += 4;
+	}
+
+	jss_data_t *jdata = (jss_data_t *)data;
+
+	//printf("idx=%d, key=%s, jdata->type: %d\n", idx, key, jdata->type);
+	
+	
+	switch(jdata->type) {
+	case json_object:
+		//(*result)->Set(Object::New(idx), String::New(key));
+		//subobj = jss->ShallowClone(jdata);
+		//return scope.Close(subobj)
+		subobj = jss->ShallowClone(jdata);
+		(*result)->Set(Integer::New(atoi(key)), subobj);
+		break;
+	case json_array:
+		///ret_array = Array::New(hash_entries(object));
+		//hash_enumerator(object, hash_enum_callback2, &ret_array);
+		//return scope.Close(ret_array);
+		subobj = jss->ShallowClone(jdata);
+		(*result)->Set(Integer::New(atoi(key)), subobj);
+		break;
+	case json_integer:
+		
+		//printf("enum] int %d\n", jdata->u.integer);
+		(*result)->Set(Integer::New(atoi(key)), Number::New(jdata->u.integer));
+		break;
+	case json_double:
+		(*result)->Set(Integer::New(atoi(key)), Number::New(jdata->u.dbl));
+		//printf("enum] dbl %f\n", jdata->u.dbl);
+		break;
+	case json_string:
+		(*result)->Set(Integer::New(atoi(key)), String::New((char *) jss->OffsetToPtr(jdata->u.string.offset)));
+		//printf("enum] str %f\n", (char *) jss->OffsetToPtr(jdata->u.string.offset));
+		break;
+	case json_boolean:
+		(*result)->Set(Integer::New(atoi(key)), Boolean::New(jdata->u.boolean));
+		//printf("enum] b %f\n", jdata->u.boolean);
+		break;
+	case json_null:
+		(*result)->Set(Integer::New(atoi(key)), Null());
+		break;
+	case json_none:
+		break;
+	};
 }
 
 Handle<Array> Jss::EnumerateNamedProperty(const AccessorInfo& info) 
@@ -440,6 +497,7 @@ Handle<Value> Jss::GetNamedProperty(Local<String> name, const AccessorInfo &info
 	jss_data_t *jdata;
 	hash_t *object;
 	char *str;
+	Local<Array> ret_array;
 
 	Local<Value> property =  info.This()->GetRealNamedProperty(name);
 	if (!property.IsEmpty()) {
@@ -447,6 +505,7 @@ Handle<Value> Jss::GetNamedProperty(Local<String> name, const AccessorInfo &info
 	}
 
 	String::Utf8Value key(name);
+
 	if (strcmp(*key, "inspect") == 0) {
 		return scope.Close(Undefined());
 	}
@@ -467,9 +526,15 @@ Handle<Value> Jss::GetNamedProperty(Local<String> name, const AccessorInfo &info
 
 	switch(jdata->type) {
 	case json_object:
-	case json_array:
 		subobj = jss->ShallowClone(jdata);
 		return scope.Close(subobj);
+	case json_array: {
+			//printf("array!! (%d)\n", hash_entries((hash_t *)jss->OffsetToPtr(jdata->u.objectoffset)));
+			ret_array = Array::New(hash_entries((hash_t *)jss->OffsetToPtr(jdata->u.objectoffset)));
+			hash_enumerator((hash_t *)jss->OffsetToPtr(jdata->u.objectoffset), hash_enum_callback2, &ret_array, (void*)jss);
+			return scope.Close(ret_array);
+
+		}
 	case json_integer:
 		return scope.Close(Number::New(jdata->u.integer));
 	case json_double:
@@ -510,6 +575,25 @@ Handle<Value> Jss::GetIndexedProperty(uint32_t index, const AccessorInfo &info)
 	return scope.Close(instance); 
 }
 
+Handle<Value> Jss::forEach(const Arguments& args)
+{
+	HandleScope scope;
+	Local<Array> result;
+	hash_t *object;
+	Jss *jss;
+
+	jss = Unwrap<Jss>(args.Holder().As<Object>());
+	if (!jss) {
+		return scope.Close(Array::New(0));
+	}
+
+	object = (hash_t *) jss->OffsetToPtr(jss->data_->u.objectoffset);
+	result = Array::New(hash_entries(object));
+	hash_enumerator(object, hash_enum_callback, &result);
+
+	return scope.Close(result);
+}
+
 
 /* */
 
@@ -547,16 +631,23 @@ Handle<Value> CreateJssObject(const Arguments& args)
 
 		try {
 			sema_enter(sema);
-			if (!jss->AllocStorage(crc, allocsize))
+			if (!jss->AllocStorage(crc, allocsize)) {
+				printf("[jss] AllocStorage error\n");
 				break;
+			}
 
 			if (jss->GetLastParsed() != crc) {
 				jval = json_parse(*jstr, len);
-				if (!jval)
+				if (!jval) {
+					printf("[jss] json_parse error\n");
 					break;
+				}
 				root = jss->Parse(jval);
 				json_value_free(jval);
-				if (!root) break;
+				if (!root) {
+					printf("[jss] Parse error\n");
+					break;
+				}
 				jss->SetData(root);
 				jss->SetLastParsed(crc);
 			} else {
@@ -564,6 +655,8 @@ Handle<Value> CreateJssObject(const Arguments& args)
 			}
 			sema_leave(sema);
 			sema_del(sema);
+
+			printf("[jss] crc32(0x%x) is loaded.\n", crc);
 			return scope.Close(instance);		
 		} catch(...) {
 			break;

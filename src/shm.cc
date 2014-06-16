@@ -87,13 +87,13 @@ shm_t* shm_create(int key, shm_size_t size, int opt)
 			DWORD(size),			// maximum object size (low-order DWORD)
 			strkey);				// name of mapping object
 		if (shmid == INVALID_HANDLE_VALUE) {
-			errprint("CreateFileMapping() failure. (%d)\n", GetLastError());
+			printf("CreateFileMapping() failure. (%d)\n", GetLastError());
 			break;
 		}
 
 		shm = (shm_t*) calloc(1, sizeof(shm_t));
 		if (!shm) {
-			errprint("Can't alloc memory for shm struct. (%d)\n", GetLastError());
+			printf("Can't alloc memory for shm struct. (%d)\n", GetLastError());
 			break;
 		}
 
@@ -103,7 +103,7 @@ shm_t* shm_create(int key, shm_size_t size, int opt)
 			0,
 			0);
 		if (!at) {
-			errprint("MapViewOfFile() failure. (%d)\n", GetLastError());
+			printf("MapViewOfFile() failure. (%d)\n", GetLastError());
 			break;
 		}
 

@@ -207,7 +207,7 @@ VMDEXTERNSTATIC void* hash_lookup(const hash_t *tptr, const char *key) {
 	return(offset ? (void*)((unsigned char *) tptr - node->dataoffset) : HASH_FAIL);
 }
 
-VMDEXTERNSTATIC void hash_enumerator(const hash_t *tptr, hash_enum_callback_t callee, void *userdata) {
+VMDEXTERNSTATIC void hash_enumerator(const hash_t *tptr, hash_enum_callback_t callee, void *userdata1, void *userdata2) {
 	hash_node_t *node;
 	int i, c=0, *bucket, offset;
 	char *key;
@@ -221,7 +221,7 @@ VMDEXTERNSTATIC void hash_enumerator(const hash_t *tptr, hash_enum_callback_t ca
 				node = (hash_node_t *)((unsigned char *) tptr - offset);
 				key = (char *)((unsigned char *) tptr - node->keyoffset);
 				data = (void *)((unsigned char *) tptr - node->dataoffset);
-				callee(tptr, c++, key, data, userdata);
+				callee(tptr, c++, key, data, userdata1, userdata2);
 			}
 		} 
 	}
