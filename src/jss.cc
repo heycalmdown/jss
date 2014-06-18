@@ -173,28 +173,32 @@ int Jss::AllocStorage(unsigned int key, unsigned int size)
 		int chunksize = 32;
 		int poolsize = size / (chunksize+sizeof(mp_hdr_t));
 
-		errprint("chunksize(%d), size(%d), realsize(%d), poolsize(%d)\n", chunksize, size, realsize, poolsize);
+		printf("chunksize(%d), size(%d), realsize(%d), poolsize(%d)\n", chunksize, size, realsize, poolsize);
 				
 		shm_ = shm_create(key, realsize, SHM_READWRITE);
-		if (!shm_) 
+		if (!shm_) {
+			printf("shm_create error\n");
 			break;
+		}
 		
 		header_ = header = (jss_header_t*) shm_get(shm_);
-		errprint("header(0x%x), data(0x%x), size(%d), key(0x%x)\n", header, header->data, size, key);
+		printf("header(0x%x), data(0x%x), size(%d), key(0x%x)\n", header, header->data, size, key);
 
 		if (header->magic =='_JSS') {
 			data_ = (jss_data_t *) OffsetToPtr(header->start);
 			printf("DATA_ = 0x%x\n", data_);
-			errprint("AllocStorage header->start=%d", header->start);
+			printf("AllocStorage header->start=%d\n", header->start);
 			
 		} else {
 			memset(header, 0, sizeof(jss_header_t));
 			header->magic = '_JSS';
 
 			mp_ = mempool_create(header->data, chunksize, poolsize);
-			if (!mp_)
+			if (!mp_) {
+				printf("mempool_create error\n");
 				break;
-			errprint("mempool_create() ok.\n");
+			}
+			printf("mempool_create() ok.\n");
 
 			userset_.userdata = mp_;
 		}
@@ -233,7 +237,7 @@ void Jss::SetData(jss_data_t *jdata)
 {
 	data_ = jdata;
 	header_->start = PtrToOffset(jdata);
-	errprint("SetData header_->start=%d\n", header_->start);
+	printf("SetData header_->start=%d\n", header_->start);
 }
 
 void Jss::SetLastParsed(unsigned int crc)
@@ -631,11 +635,11 @@ Handle<Value> CreateJssObject(const Arguments& args)
 		len = strlen(*jstr);
 		crc = crc32(0, *jstr, len);
 		allocsize = std::max(len*40, 1*1024*1024*10);
-		errprint("jstrlen(%d), crc32(0x%x), allocsize(%d)\n", len, crc, allocsize);
+		printf("jstrlen(%d), crc32(0x%x), allocsize(%d)\n", len, crc, allocsize);
 
 		instance = Jss::NewInstance(0, NULL);
 		jss = node::ObjectWrap::Unwrap<Jss>(instance->ToObject());
-		errprint("jss(0x%x)\n", jss);
+		printf("jss(0x%x)\n", jss);
 
 		//sema = sema_create(crc);
 		
@@ -669,7 +673,7 @@ Handle<Value> CreateJssObject(const Arguments& args)
 			//sema_leave(sema);
 			//sema_del(sema);
   
-			/*
+			
 			printf("[jss] crc32(0x%x) has been loaded.\n", crc);
 
 			tt = (unsigned char*) jss->header_;
@@ -686,9 +690,8 @@ Handle<Value> CreateJssObject(const Arguments& args)
 			tt = (unsigned char*) jss->data_;
 			printf("ROOT 0x%x, 0x%x, 0x%x, 0x%x\n",tt[0], tt[1], tt[2], tt[3]);
 
-
 			printf("\n");
-			*/
+			
 			//getchar();
 			return scope.Close(instance);		
 		} catch(...) {

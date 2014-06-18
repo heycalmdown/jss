@@ -124,7 +124,10 @@ shm_t* shm_create(int key, shm_size_t size, int opt)
 
 	for (;;) {
 		shmid = shmget((key_t)key, size, IPC_CREAT|0666);
-		if (shmid == -1) break;
+		if (shmid == -1) {
+			printf("shmget error %d\n", errno);
+			break;
+		}
 		
 		shm = (shm_t*) calloc(1, sizeof(shm_t));
 		if (!shm) break;
