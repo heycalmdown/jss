@@ -171,8 +171,16 @@ void shm_del(shm_t *shm)
 	if (shm->shmid) CloseHandle(shm->shmid);
 	
 #else
+	struct shmid_ds shminfo;
+	shmid_t shmid;
+	
 	for (int i=0; i<MAX_OPENED_HISTORY; i++) {
 		if (_opened_shmids[i] == shm->shmid) {
+			shmid = _opened_shmids[i];
+			shmctl(shmid, IPC_STAT , &shminfo);
+			if (shminfo.shm_nattch == 1)
+				shmctl(shmid, IPC_RMID, 0);
+			
 			_opened_shmids[i] = NULL;
 			break;
 		}

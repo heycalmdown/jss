@@ -109,7 +109,7 @@ public:
 	static void Init(Handle<Object> target);
 	static Handle<Value> NewInstance(int argc, Handle<Value> argv[]);
 
-private:
+//private:
 	 Jss();
 	~Jss();
 	
@@ -159,6 +159,7 @@ Jss::~Jss()
 
 void Jss::FreeStorage()
 {
+	//printf(" ================ FREE ===============\n");
 	if (sema_) sema_del(sema_);
 	if (shm_) shm_del(shm_);
 	if (mp_) mempool_del(mp_);
@@ -183,6 +184,7 @@ int Jss::AllocStorage(unsigned int key, unsigned int size)
 
 		if (header->magic =='_JSS') {
 			data_ = (jss_data_t *) OffsetToPtr(header->start);
+			printf("DATA_ = 0x%x\n", data_);
 			errprint("AllocStorage header->start=%d", header->start);
 			
 		} else {
@@ -241,6 +243,7 @@ void Jss::SetLastParsed(unsigned int crc)
 
 unsigned int Jss::GetLastParsed()
 {
+	//printf("lastparsed => 0x%x\n", header_->lastParsed);
 	return header_->lastParsed;
 }
 
@@ -490,7 +493,7 @@ Handle<Array> Jss::EnumerateNamedProperty(const AccessorInfo& info)
 	 HandleScope scope;
 	 return scope.Close(Array::New(0));
 }
-
+int tc = 0;
 Handle<Value> Jss::GetNamedProperty(Local<String> name, const AccessorInfo &info)
 {
 	HandleScope scope;
@@ -515,12 +518,19 @@ Handle<Value> Jss::GetNamedProperty(Local<String> name, const AccessorInfo &info
 		return scope.Close(Undefined());
 	}
 
+	if (!tc) {
+		printf("key=%s\n", *key);
+		printf("jss->data_(0x%x), jss->header_(0x%x)\n", jss->data_, jss->header_);
+		tc++;
+	}
+
+	//printf("key=%s\n", *key);
 	object = (hash_t *) jss->OffsetToPtr(jss->data_->u.objectoffset);
+	//printf("err?\n");
 	jdata = (jss_data_t *) hash_lookup(object, *key);
 	if (jdata == HASH_FAIL)
 		return scope.Close(Undefined());
 
-	//printf("key=%s\n", *key);
 
 	Handle<Value> subobj;
 
@@ -615,22 +625,23 @@ Handle<Value> CreateJssObject(const Arguments& args)
 	json_value *jval;
 	unsigned int crc;
 	int len, allocsize;
-	sema_t sema;
+	sema_t sema = NULL;
 
 	for (;;) {
 		len = strlen(*jstr);
 		crc = crc32(0, *jstr, len);
-		allocsize = std::max(len*20, 1*1024*1024);
+		allocsize = std::max(len*40, 1*1024*1024*10);
 		errprint("jstrlen(%d), crc32(0x%x), allocsize(%d)\n", len, crc, allocsize);
 
 		instance = Jss::NewInstance(0, NULL);
 		jss = node::ObjectWrap::Unwrap<Jss>(instance->ToObject());
 		errprint("jss(0x%x)\n", jss);
 
-		sema = sema_create(crc);
-
+		//sema = sema_create(crc);
+		
+		unsigned char *tt;
 		try {
-			sema_enter(sema);
+			//sema_enter(sema);
 			if (!jss->AllocStorage(crc, allocsize)) {
 				printf("[jss] AllocStorage error\n");
 				break;
@@ -648,23 +659,45 @@ Handle<Value> CreateJssObject(const Arguments& args)
 					printf("[jss] Parse error\n");
 					break;
 				}
+				
 				jss->SetData(root);
 				jss->SetLastParsed(crc);
 			} else {
 				printf("[jss] crc32(0x%x) is already loaded.\n", crc);
 			}
-			sema_leave(sema);
-			sema_del(sema);
+			printf("[jss] ROOT = 0x%x\n", root);
+			//sema_leave(sema);
+			//sema_del(sema);
+  
+			/*
+			printf("[jss] crc32(0x%x) has been loaded.\n", crc);
 
-			printf("[jss] crc32(0x%x) is loaded.\n", crc);
+			tt = (unsigned char*) jss->header_;
+			printf(">>>>> header_[%p]\n", jss->header_);
+			for (int i=1; i<256; i++) {
+				printf("0x%x ", tt[i]);
+				if (!(i%12)) { printf("addr 0x%x\n", &tt[i]); }
+			}
+			printf("\ndata_ => 0x%x\n", jss->data_);
+
+			printf(">>>>> start[%p]\n", &(jss->header_->start));
+			printf(">>>>> start[%d]\n", jss->header_->start);
+			printf(">>>>> data_[%p]\n", jss->data_);
+			tt = (unsigned char*) jss->data_;
+			printf("ROOT 0x%x, 0x%x, 0x%x, 0x%x\n",tt[0], tt[1], tt[2], tt[3]);
+
+
+			printf("\n");
+			*/
+			//getchar();
 			return scope.Close(instance);		
 		} catch(...) {
 			break;
 		}
 	}
 
-	sema_leave(sema);
-	sema_del(sema);
+	//sema_leave(sema);
+	//sema_del(sema);
 	jss->FreeStorage();
 	ThrowException(Exception::Error(String::New("")));
 	return scope.Close(Undefined());
