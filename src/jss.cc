@@ -69,7 +69,7 @@ typedef struct jss_header_t {
 	unsigned int name;
 
 	unsigned int lastParsed;
-	unsigned int start;
+	long start;
 
 	unsigned char data[];
 } jss_header_t;
@@ -98,8 +98,8 @@ public:
 	int EnterLock();
 	int LeaveLock();
 	jss_data_t* Parse(json_value *jval);
-	void* OffsetToPtr(unsigned long offset);
-	unsigned long PtrToOffset(void *ptr);
+	void* OffsetToPtr(long offset);
+	long PtrToOffset(void *ptr);
 	void SetData(jss_data_t *jdata);
 	void SetLastParsed(unsigned int crc);
 	unsigned int GetLastParsed();
@@ -217,12 +217,12 @@ int Jss::LeaveLock()
 	return sema_leave(sema_);
 }
 
-void* Jss::OffsetToPtr(unsigned long offset)
+void* Jss::OffsetToPtr(long offset)
 {
 	return (void *) ((unsigned char*) header_ - offset);
 }
 
-unsigned long Jss::PtrToOffset(void *ptr)
+long Jss::PtrToOffset(void *ptr)
 {
 	return (unsigned char*) header_ - (unsigned char *) ptr;
 }

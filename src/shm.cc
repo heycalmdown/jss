@@ -59,7 +59,7 @@ static void set_shm_cleanup()
 	sigemptyset(&sa.sa_mask);
 	sa.sa_sigaction = cleanup;
 	sa.sa_flags = SA_SIGINFO;
-	sigaction(SIGSEGV, &sa, &_old_segv_sa);
+	//sigaction(SIGSEGV, &sa, &_old_segv_sa);
 	sigaction(SIGINT, &sa, &_old_int_sa);
 
 	setted = 1;
